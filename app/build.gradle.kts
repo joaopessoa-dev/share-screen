@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -67,4 +68,10 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:1.10.0")
     implementation("androidx.media3:media3-ui:1.10.0")
     implementation("androidx.media3:media3-ui-compose-material3:1.10.0")
+
+    // Internet
+    implementation("com.squareup.okhttp3:okhttp:4.9.1")
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 }
