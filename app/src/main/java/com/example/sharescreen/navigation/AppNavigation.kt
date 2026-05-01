@@ -19,7 +19,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.sharescreen.data.BottomNavItem
+import com.example.sharescreen.navigation.BottomNavItem
 import com.example.sharescreen.ui.HomeScreen
 import com.example.sharescreen.ui.player.CreateOrJoinRoom
 import com.example.sharescreen.ui.room.RoomScreen
