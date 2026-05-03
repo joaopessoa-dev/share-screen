@@ -5,6 +5,7 @@ import com.example.sharescreen.data.remote.parser.RoomEventParser
 import com.example.sharescreen.data.remote.websocket.OkHttpWebSocketClient
 import com.example.sharescreen.data.remote.websocket.WebSocketClient
 import com.example.sharescreen.data.repository.RoomRepository
+import com.example.sharescreen.domain.sync.SyncManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,4 +37,7 @@ object AppModule {
         mapper: RoomEventMapper
     ) : RoomRepository = RoomRepository(webSocketClient,parser,mapper)
 
+    @Provides
+    @Singleton
+    fun provideSyncManager() : SyncManager = SyncManager()
 }
