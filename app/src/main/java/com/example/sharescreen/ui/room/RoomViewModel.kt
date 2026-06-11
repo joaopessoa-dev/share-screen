@@ -29,8 +29,8 @@ class RoomViewModel @Inject constructor(
         this.playerController = controller
     }
 
-    fun connect() {
-        repository.connect()
+    fun connect(url: String) {
+        repository.connect(url)
         viewModelScope.launch {
             repository.events.collect { event ->
                 val playerTime = playerController?.getCurrentTime() ?: 0L

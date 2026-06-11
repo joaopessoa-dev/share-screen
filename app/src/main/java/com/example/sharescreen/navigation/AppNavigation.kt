@@ -15,65 +15,65 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.sharescreen.navigation.BottomNavItem
+import androidx.navigation.navArgument
+import com.example.sharescreen.domain.model.ScreenShareRoom
 import com.example.sharescreen.ui.HomeScreen
 import com.example.sharescreen.ui.player.CreateOrJoinRoom
 import com.example.sharescreen.ui.room.RoomScreen
+import com.example.sharescreen.ui.screenshare.HostRoomScreen
+import com.example.sharescreen.ui.screenshare.ViewerRoomScreen
+import java.net.URLDecoder
 
-
-val BottomNavList = listOf(
-    BottomNavItem(Screen.Home,"home", Icons.Filled.Home),
+private val bottomNavItems = listOf(
+    BottomNavItem(Screen.Home, "home", Icons.Filled.Home),
     BottomNavItem(Screen.Room, "room", Icons.Filled.Airplay),
     BottomNavItem(Screen.CreateOrJoin, "createOrJoin", Icons.Filled.AdUnits)
 )
+
+private val tabRoutes = setOf(Screen.Home.route, Screen.Room.route, Screen.CreateOrJoin.route)
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val showBottomBar = currentRoute in tabRoutes
 
-    val showBottomBar = currentRoute in listOf(
-        Screen.Home.route,
-        Screen.Room.route,
-        Screen.CreateOrJoin.route,
-    )
-
-    Scaffold (
+    Scaffold(
         bottomBar = {
-            NavigationBar {
-                val current = navBackStackEntry?.destination
-
-                BottomNavList.forEach { item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                        selected =  current?.hierarchy?.any { it.route == item.screen.route } == true,
-                        onClick = {
-                            navController.navigate(item.screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    val current = navBackStackEntry?.destination
+                    bottomNavItems.forEach { item ->
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) },
+                            selected = current?.hierarchy?.any { it.route == item.screen.route } == true,
+                            onClick = {
+                                navController.navigate(item.screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
-
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     ) { innerPadding ->
         NavHost(
             navController,
-            Screen.Home.route,
-            Modifier.padding(innerPadding)
+            startDestination = Screen.Home.route,
+            modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(navController)
@@ -86,9 +86,44 @@ fun AppNavigation() {
             composable(Screen.CreateOrJoin.route) {
                 CreateOrJoinRoom(navController)
             }
+
+            composable(
+                route = Screen.HostRoom.route,
+                arguments = listOf(
+                    navArgument("roomCode") { type = NavType.StringType },
+                    navArgument("userName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val roomCode = backStackEntry.arguments?.getString("roomCode") ?: ""
+                val userName = URLDecoder.decode(
+                    backStackEntry.arguments?.getString("userName") ?: "", "UTF-8"
+                )
+                // Rebuild room from navArgs (full room was fetched before navigation)
+                val room = ScreenShareRoom(roomCode = roomCode, hostId = "", hostName = userName)
+                HostRoomScreen(
+                    navController = navController,
+                    room = room,
+                    hostName = userName
+                )
+            }
+
+            composable(
+                route = Screen.ViewerRoom.route,
+                arguments = listOf(
+                    navArgument("roomCode") { type = NavType.StringType },
+                    navArgument("userName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val roomCode = backStackEntry.arguments?.getString("roomCode") ?: ""
+                val userName = URLDecoder.decode(
+                    backStackEntry.arguments?.getString("userName") ?: "", "UTF-8"
+                )
+                ViewerRoomScreen(
+                    navController = navController,
+                    roomCode = roomCode,
+                    viewerName = userName
+                )
+            }
         }
-
     }
-
-
 }

@@ -13,8 +13,8 @@ class RoomRepository(
     private val mapper: RoomEventMapper
 ) {
 
-    fun connect() {
-        webSocketClient.connect()
+    fun connect(url: String) {
+        webSocketClient.connect(url)
     }
 
     fun disconnect() {

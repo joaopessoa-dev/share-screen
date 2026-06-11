@@ -91,4 +91,7 @@ dependencies {
 
     // DataStore (persist token and device id)
     implementation(libs.datastore.preferences)
+
+    // WebRTC
+    implementation("io.getstream:stream-webrtc-android:1.3.8")
 }
