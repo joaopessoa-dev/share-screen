@@ -46,6 +46,8 @@ data class ParticipantResponse(
 data class WsMessage(
     val type: String,
     val targetId: String? = null,
+    val fromId: String? = null,   // sender's participant ID (added by relay server)
+    val hostId: String? = null,   // host's participant ID (present in room-state)
     val sdp: String? = null,
     val candidate: String? = null,
     val sdpMid: String? = null,

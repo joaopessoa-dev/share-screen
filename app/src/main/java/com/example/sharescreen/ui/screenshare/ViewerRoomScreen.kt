@@ -94,21 +94,36 @@ fun ViewerRoomScreen(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // Waiting state
+            // Waiting / connecting state
             Column(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (uiState.connectionState) {
-                    is ConnectionState.Connected -> {
-                        CircularProgressIndicator(color = Color.White)
-                        Spacer(Modifier.height(16.dp))
-                        Text("Aguardando transmissão...", color = Color.White)
-                    }
                     is ConnectionState.Connecting -> {
                         CircularProgressIndicator(color = Color.White)
                         Spacer(Modifier.height(16.dp))
-                        Text("Conectando...", color = Color.White)
+                        Text("Conectando à sala...", color = Color.White)
+                    }
+                    is ConnectionState.Connected -> {
+                        val hasHost = uiState.participants.any {
+                            it.role == com.example.sharescreen.domain.model.ParticipantRole.HOST
+                        }
+                        Icon(
+                            Icons.Default.Tv,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(56.dp)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        if (hasHost) {
+                            Text(
+                                "Aguardando o host iniciar a transmissão...",
+                                color = Color.White
+                            )
+                        } else {
+                            Text("Conectado. Aguardando host...", color = Color.White)
+                        }
                     }
                     is ConnectionState.Error -> {
                         Icon(

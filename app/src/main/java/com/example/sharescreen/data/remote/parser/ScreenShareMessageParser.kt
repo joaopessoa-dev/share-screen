@@ -23,7 +23,8 @@ class ScreenShareMessageParser {
             WsMessageType.PING -> ScreenShareEvent.Ping
 
             WsMessageType.ROOM_STATE -> ScreenShareEvent.RoomState(
-                participants = message.participants?.map { it.toParticipant() } ?: emptyList()
+                participants = message.participants?.map { it.toParticipant() } ?: emptyList(),
+                hostId = message.hostId ?: ""
             )
 
             WsMessageType.PARTICIPANT_JOINED -> ScreenShareEvent.ParticipantJoined(
@@ -36,18 +37,19 @@ class ScreenShareMessageParser {
                     ?: throw IllegalArgumentException("Missing participantId in participant-left")
             )
 
+            // fromId = quem enviou (relay do servidor); targetId = destinatário original
             WsMessageType.OFFER -> ScreenShareEvent.Offer(
-                fromId = message.targetId ?: "",
+                fromId = message.fromId ?: message.targetId ?: "",
                 sdp = message.sdp ?: throw IllegalArgumentException("Missing SDP in offer")
             )
 
             WsMessageType.ANSWER -> ScreenShareEvent.Answer(
-                fromId = message.targetId ?: "",
+                fromId = message.fromId ?: message.targetId ?: "",
                 sdp = message.sdp ?: throw IllegalArgumentException("Missing SDP in answer")
             )
 
             WsMessageType.ICE_CANDIDATE -> ScreenShareEvent.IceCandidate(
-                fromId = message.targetId ?: "",
+                fromId = message.fromId ?: message.targetId ?: "",
                 candidate = message.candidate
                     ?: throw IllegalArgumentException("Missing candidate in ice-candidate"),
                 sdpMid = message.sdpMid,

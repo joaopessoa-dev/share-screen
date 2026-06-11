@@ -4,7 +4,8 @@ sealed class ScreenShareEvent {
 
     // Estado inicial da sala ao conectar
     data class RoomState(
-        val participants: List<Participant>
+        val participants: List<Participant>,
+        val hostId: String = ""
     ) : ScreenShareEvent()
 
     // Participante entrou na sala

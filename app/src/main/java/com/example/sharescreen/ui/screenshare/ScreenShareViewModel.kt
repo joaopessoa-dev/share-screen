@@ -28,6 +28,7 @@ data class ScreenShareUiState(
     val role: ParticipantRole? = null,
     val connectionState: ConnectionState = ConnectionState.Disconnected,
     val participants: List<Participant> = emptyList(),
+    val hostParticipantId: String = "",  // ID do HOST na sessão WebSocket
     val isScreenSharing: Boolean = false,
     val error: String? = null,
     val isRoomClosed: Boolean = false
@@ -91,18 +92,29 @@ class ScreenShareViewModel @Inject constructor(
     private fun handleEvent(event: ScreenShareEvent) {
         when (event) {
             is ScreenShareEvent.RoomState -> {
-                _uiState.update { it.copy(participants = event.participants, isLoading = false) }
+                // hostId pode vir direto no campo ou ser encontrado na lista de participantes
+                val hostId = event.hostId.ifEmpty {
+                    event.participants.find { it.role == ParticipantRole.HOST }?.id ?: ""
+                }
+                _uiState.update {
+                    it.copy(
+                        participants = event.participants,
+                        hostParticipantId = hostId,
+                        isLoading = false
+                    )
+                }
             }
 
             is ScreenShareEvent.ParticipantJoined -> {
                 _uiState.update { state ->
                     state.copy(participants = state.participants + event.participant)
                 }
-                // HOST: send offer to new viewer if screen share is already active
+                // HOST: enviar offer para novo viewer se já estiver compartilhando
                 if (_uiState.value.role == ParticipantRole.HOST &&
                     event.participant.role == ParticipantRole.VIEWER &&
                     _uiState.value.isScreenSharing
                 ) {
+                    Log.d(TAG, "New viewer joined, sending offer to ${event.participant.id}")
                     webRtcManager.createOfferFor(event.participant.id)
                 }
             }
@@ -114,17 +126,37 @@ class ScreenShareViewModel @Inject constructor(
             }
 
             is ScreenShareEvent.Offer -> {
-                // VIEWER: received offer from host
-                webRtcManager.processOffer(event.fromId, event.sdp)
+                // VIEWER recebe offer do HOST
+                // Prioridade: fromId da mensagem → hostParticipantId do room-state → busca na lista
+                val hostId = resolveHostId(event.fromId)
+                Log.d(TAG, "Processing offer from host: $hostId")
+                webRtcManager.processOffer(hostId, event.sdp)
             }
 
             is ScreenShareEvent.Answer -> {
-                // HOST: received answer from viewer
-                webRtcManager.processAnswer(event.fromId, event.sdp)
+                // HOST recebe answer do VIEWER
+                // O fromId aqui é o ID do viewer que respondeu
+                val viewerId = event.fromId.ifEmpty {
+                    _uiState.value.participants
+                        .firstOrNull { it.role == ParticipantRole.VIEWER }?.id ?: ""
+                }
+                Log.d(TAG, "Processing answer from viewer: $viewerId")
+                webRtcManager.processAnswer(viewerId, event.sdp)
             }
 
             is ScreenShareEvent.IceCandidate -> {
-                webRtcManager.addIceCandidate(event.fromId, event.candidate, event.sdpMid, event.sdpMLineIndex)
+                // Determina o peerId correto conforme o papel local
+                val peerId = if (_uiState.value.role == ParticipantRole.VIEWER) {
+                    resolveHostId(event.fromId)
+                } else {
+                    event.fromId.ifEmpty {
+                        _uiState.value.participants
+                            .firstOrNull { it.role == ParticipantRole.VIEWER }?.id ?: ""
+                    }
+                }
+                if (peerId.isNotEmpty()) {
+                    webRtcManager.addIceCandidate(peerId, event.candidate, event.sdpMid, event.sdpMLineIndex)
+                }
             }
 
             is ScreenShareEvent.RoomClosed -> {
@@ -137,6 +169,14 @@ class ScreenShareViewModel @Inject constructor(
 
             is ScreenShareEvent.Ping -> { /* handled by repository */ }
         }
+    }
+
+    /** Resolve o ID do HOST: usa fromId se válido, senão cai para o hostParticipantId do room-state */
+    private fun resolveHostId(fromId: String): String {
+        if (fromId.isNotEmpty()) return fromId
+        val stateHostId = _uiState.value.hostParticipantId
+        if (stateHostId.isNotEmpty()) return stateHostId
+        return _uiState.value.participants.find { it.role == ParticipantRole.HOST }?.id ?: ""
     }
 
     // ── HOST ─────────────────────────────────────────────────────────────────
@@ -157,9 +197,10 @@ class ScreenShareViewModel @Inject constructor(
         webRtcManager.startScreenCapture(mediaProjectionIntent)
         _uiState.update { it.copy(isScreenSharing = true) }
 
-        // Send offer to every viewer already in the room
+        // Envia offer para cada viewer já conectado
         _uiState.value.participants
             .filter { it.role == ParticipantRole.VIEWER }
+            .also { Log.d(TAG, "Sending offers to ${it.size} viewers") }
             .forEach { webRtcManager.createOfferFor(it.id) }
     }
 
