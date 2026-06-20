@@ -1,5 +1,6 @@
 package com.example.sharescreen.ui.player
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sharescreen.data.repository.ScreenShareRepository
@@ -9,12 +10,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
 
 @HiltViewModel
 class CreateOrJoinViewModel @Inject constructor(
     private val repository: ScreenShareRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "CreateOrJoinViewModel"
+    }
 
     private val _uiState = MutableStateFlow(CreateOrJoinUiState())
     val uiState: StateFlow<CreateOrJoinUiState> = _uiState.asStateFlow()
@@ -35,7 +43,32 @@ class CreateOrJoinViewModel @Inject constructor(
                 val room = repository.createRoom(name)
                 _uiState.update { it.copy(isLoading = false, navigateToHost = NavigationEvent(room, name)) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Erro ao criar sala") }
+                Log.e(TAG, "Erro ao criar sala", e)
+                val errorMessage = parseError(e)
+                _uiState.update { it.copy(isLoading = false, error = errorMessage) }
+            }
+        }
+    }
+
+    private fun parseError(e: Exception): String {
+        return when (e) {
+            is HttpException -> {
+                val code = e.code()
+                val errorBody = e.response()?.errorBody()?.string()
+                Log.e(TAG, "HttpException: code=$code, body=$errorBody")
+                when (code) {
+                    401 -> "Sessão expirada. Tente novamente."
+                    403 -> "Acesso negado"
+                    404 -> "Sala não encontrada"
+                    500, 502, 503 -> "Servidor indisponível. Tente novamente."
+                    else -> "Erro do servidor: $code"
+                }
+            }
+            is SocketTimeoutException -> "Tempo de conexão esgotado. Verifique sua internet."
+            is UnknownHostException -> "Sem conexão com a internet"
+            else -> {
+                Log.e(TAG, "Erro desconhecido: ${e::class.java.simpleName} - ${e.message}")
+                e.message ?: "Erro desconhecido"
             }
         }
     }
@@ -55,7 +88,9 @@ class CreateOrJoinViewModel @Inject constructor(
                 val room = repository.getRoom(code)
                 _uiState.update { it.copy(isLoading = false, navigateToViewer = NavigationEvent(room, name)) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Sala não encontrada") }
+                Log.e(TAG, "Erro ao entrar na sala", e)
+                val errorMessage = parseError(e)
+                _uiState.update { it.copy(isLoading = false, error = errorMessage) }
             }
         }
     }

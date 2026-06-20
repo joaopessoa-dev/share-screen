@@ -72,7 +72,6 @@ class ScreenShareRepository(
             request = CreateRoomRequest(hostName)
         )
 
-        // Server only returns roomCode on creation; hostId/hostName arrive via WebSocket room-state
         return ScreenShareRoom(roomCode = response.roomCode)
     }
 

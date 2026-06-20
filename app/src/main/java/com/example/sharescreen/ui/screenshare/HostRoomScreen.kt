@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -80,8 +81,20 @@ fun HostRoomScreen(
     val mediaProjectionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.let { viewModel.startScreenShare(it) }
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            Log.d("HostRoomScreen", "MediaProjection permission granted, starting service")
+            // Start foreground service AFTER getting MediaProjection permission (required on Android 14+)
+            val serviceIntent = Intent(context, ScreenCaptureService::class.java).apply {
+                action = ScreenCaptureService.ACTION_START
+                putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, result.resultCode)
+                putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, result.data)
+            }
+            context.startForegroundService(serviceIntent)
+
+            // Now start WebRTC screen capture
+            viewModel.startScreenShare(result.data!!)
+        } else {
+            Log.w("HostRoomScreen", "MediaProjection permission denied")
         }
     }
 
@@ -237,11 +250,8 @@ private fun requestScreenCapture(
     context: Context,
     launcher: androidx.activity.result.ActivityResultLauncher<Intent>
 ) {
-    // Start foreground service before requesting MediaProjection (required on Android 14+)
-    val serviceIntent = Intent(context, ScreenCaptureService::class.java)
-        .apply { action = ScreenCaptureService.ACTION_START }
-    context.startForegroundService(serviceIntent)
-
+    // Only request MediaProjection permission
+    // Service will be started AFTER permission is granted (required on Android 14+)
     val manager = context.getSystemService(MediaProjectionManager::class.java)
     launcher.launch(manager.createScreenCaptureIntent())
 }

@@ -84,7 +84,6 @@ fun CreateOrJoinRoom(
 
         Spacer(Modifier.height(32.dp))
 
-        // ── Criar sala ────────────────────────────────────────────────────────
 
         Text("Transmitir minha tela", style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(8.dp))
@@ -105,7 +104,6 @@ fun CreateOrJoinRoom(
         HorizontalDivider()
         Spacer(Modifier.height(24.dp))
 
-        // ── Entrar na sala ────────────────────────────────────────────────────
 
         Text("Assistir transmissão", style = MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(8.dp))
